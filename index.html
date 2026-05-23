@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aurebesh Sign Generator</title>
+<style>
+  :root {
+    --bg: #0c0e12;
+    --panel: #15181f;
+    --panel-2: #1d2230;
+    --line: #2a2f3d;
+    --text: #e8eaf0;
+    --muted: #8a93a6;
+    --accent: #f5c518;
+    --accent-2: #4cc4ff;
+    --ok: #6dd28a;
+    --err: #ff7a7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  body { display: grid; grid-template-columns: 380px 1fr; min-height: 100vh; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 22px; overflow-y: auto; }
+  main { padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+  label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 6px; }
+  select, textarea, input[type="text"] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 9px 11px;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 13px;
+  }
+  select:focus, textarea:focus, input:focus { outline: 1px solid var(--accent-2); border-color: var(--accent-2); }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  button {
+    background: var(--accent);
+    color: #111;
+    border: 0;
+    padding: 9px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+  }
+  button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+  button:hover { filter: brightness(1.1); }
+  .preview-wrap {
+    background:
+      linear-gradient(rgba(76,196,255,0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(76,196,255,0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+      radial-gradient(circle at 50% 40%, #1a1f2b 0%, #0a0c10 80%);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 420px;
+    overflow: auto;
+  }
+  .preview-wrap svg { max-width: 100%; height: auto; box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.04); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status { font-size: 12px; color: var(--muted); min-height: 16px; margin-top: 4px; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 6px; line-height: 1.5; }
+  .style-name { font-weight: 600; font-size: 14px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--panel-2); color: var(--accent-2); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-left: 8px; vertical-align: middle; }
+  .charsheet { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; background: var(--panel-2); padding: 10px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; }
+  .charsheet svg { width: 100%; height: auto; }
+  .charsheet .glyphcell { aspect-ratio: 1; background: #0a0c10; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+  details { margin-top: 18px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Aurebesh Sign Generator</h1>
+  <div class="sub">Proof of concept · built-in glyphs</div>
+
+  <label>1. Sign style</label>
+  <select id="style">
+    <option value="news-ticker">News ticker (HoloNet)</option>
+    <option value="cast-only">Restricted door panel</option>
+    <option value="warning">Hazard / warning panel</option>
+    <option value="directional">Directional sign</option>
+    <option value="shop">Shop signage (neon)</option>
+    <option value="registry">Ship registry plate</option>
+    <option value="holo">Holo-display caption</option>
+    <option value="chart">Alphabet chart</option>
+  </select>
+
+  <label>2. Text</label>
+  <label style="text-transform:none;letter-spacing:0;font-size:11px;margin-top:6px">Primary</label>
+  <input type="text" id="line1" placeholder="Main text">
+  <label style="text-transform:none;letter-spacing:0;font-size:11px;margin-top:6px">Subtitle</label>
+  <input type="text" id="line2" placeholder="Smaller secondary text">
+  <label style="text-transform:none;letter-spacing:0;font-size:11px;margin-top:6px">Code / ID</label>
+  <input type="text" id="line3" placeholder="Tiny serial / code">
+
+  <div class="row" style="margin-top:12px">
+    <button class="secondary" id="exampleBtn">Use example</button>
+    <button id="renderBtn">Generate</button>
+  </div>
+
+  <label style="margin-top:22px">Export</label>
+  <div class="toolbar">
+    <button class="secondary" id="downloadSvg">Download SVG</button>
+    <button class="secondary" id="downloadPng">Download PNG</button>
+    <button class="secondary" id="copyPng">Copy PNG</button>
+  </div>
+  <div class="status" id="status"></div>
+
+  <details>
+    <summary>Glyph chart</summary>
+    <div class="charsheet" id="charsheet"></div>
+  </details>
+</aside>
+
+<main>
+  <div><span class="style-name" id="styleName">News ticker</span><span class="badge" id="styleBadge">Live preview</span></div>
+  <div class="preview-wrap"><div id="preview"></div></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const status = (msg, ok = true) => { $("status").textContent = msg; $("status").style.color = ok ? "var(--muted)" : "var(--err)"; };
+
+// ─────────────────────────────────────────────────────────────
+// Aurebesh glyph paths
+// Each glyph is designed in a 100×100 box. Cap height ~84.
+// Uses fill-rule="evenodd" so internal cutouts (B, D, F, O, P, Q, R) work.
+// Geometric / stylized interpretation — not 100% canon, but cohesive.
+// ─────────────────────────────────────────────────────────────
+const GLYPHS = {
+  // Aurek — sideways K (chevron right with horizontal extensions)
+  A: 'M5 15L70 15L92 50L70 85L5 85L5 70L30 70L55 50L30 30L5 30Z',
+  // Besh — hexagonal eye with mid-bar
+  B: 'M22 15L78 15L95 50L78 85L22 85L5 50Z M30 28L70 28L82 42L30 42Z M30 58L82 58L70 72L30 72Z',
+  // Cresh — backwards L with top-right step
+  C: 'M10 15L90 15L90 40L75 40L75 30L25 30L25 85L10 85Z',
+  // Dorn — square hook (top + right vertical)
+  D: 'M10 15L90 15L90 85L75 85L75 30L10 30Z',
+  // Esk — three horizontal bars (≡)
+  E: 'M10 15L90 15L90 28L10 28Z M10 43L90 43L90 57L10 57Z M10 72L90 72L90 85L10 85Z',
+  // Forn — angled 7 with clipped top corner
+  F: 'M10 15L90 15L75 30L35 85L15 85L60 30L10 30Z',
+  // Grek — downward V chevron
+  G: 'M10 15L30 15L50 55L70 15L90 15L55 85L45 85Z',
+  // Herf — three horizontals (spread)
+  H: 'M10 18L90 18L90 30L10 30Z M10 44L90 44L90 56L10 56Z M10 70L90 70L90 82L10 82Z',
+  // Isk — capped vertical (I)
+  I: 'M25 15L75 15L75 28L58 28L58 72L75 72L75 85L25 85L25 72L42 72L42 28L25 28Z',
+  // Jenth — square J hook
+  J: 'M60 15L90 15L90 72L72 88L28 88L10 72L10 60L25 60L25 67L38 75L62 75L75 67L75 30L60 30Z',
+  // Krill — Latin K (vertical + 2 diagonals)
+  K: 'M10 15L25 15L25 42L70 15L92 15L42 50L92 85L70 85L25 58L25 85L10 85Z',
+  // Leth — L (vertical + bottom horizontal)
+  L: 'M10 15L25 15L25 70L90 70L90 85L10 85Z',
+  // Mern — angular peaks
+  M: 'M10 15L25 15L50 50L75 15L90 15L90 85L75 85L75 35L55 65L45 65L25 35L25 85L10 85Z',
+  // Nern — N (diagonal top-left to bottom-right)
+  N: 'M10 15L30 15L75 70L75 15L90 15L90 85L70 85L25 30L25 85L10 85Z',
+  // Osk — hexagonal outline
+  O: 'M15 15L85 15L95 50L85 85L15 85L5 50Z M25 28L75 28L82 50L75 72L25 72L18 50Z',
+  // Peth — square C opening left (⊐)
+  P: 'M10 15L90 15L90 85L10 85L10 72L75 72L75 28L10 28Z',
+  // Qek — square ⊐ with clipped bottom-right
+  Q: 'M10 15L90 15L90 65L75 80L75 85L10 85L10 72L75 72L75 28L10 28Z',
+  // Resh — 7-shape (top + diagonal to bottom-left)
+  R: 'M10 15L90 15L90 30L75 30L30 85L10 85L55 30L10 30Z',
+  // Senth — angular S (offset horizontals)
+  S: 'M10 15L92 15L92 50L25 50L25 70L92 70L92 85L10 85L10 50L77 50L77 30L10 30Z',
+  // Trill — downward arrow ↓
+  T: 'M10 15L90 15L90 28L60 28L60 65L80 65L50 92L20 65L40 65L40 28L10 28Z',
+  // Usk — square U
+  U: 'M10 15L25 15L25 70L75 70L75 15L90 15L90 85L10 85Z',
+  // Vev — Y shape (V + vertical tail)
+  V: 'M10 15L30 15L50 50L70 15L90 15L58 60L58 85L42 85L42 60Z',
+  // Wesk — rectangle outline
+  W: 'M10 15L90 15L90 85L10 85Z M22 28L78 28L78 72L22 72Z',
+  // Xesh — downward triangle outline
+  X: 'M50 15L92 85L8 85Z M50 38L78 80L22 80Z',
+  // Yirt — V with horizontal foot
+  Y: 'M10 15L30 15L50 50L70 15L90 15L58 60L90 60L90 75L10 75L10 60L42 60Z',
+  // Zerek — Z (top + diagonal + bottom)
+  Z: 'M10 15L90 15L90 28L40 75L90 75L90 88L10 88L10 75L60 28L10 28Z',
+
+  // Digits
+  '0': 'M50 8L92 50L50 92L8 50Z M50 26L74 50L50 74L26 50Z',
+  '1': 'M48 8L62 8L62 78L84 78L84 92L20 92L20 78L48 78Z M48 8L24 22L30 32L48 22Z',
+  '2': 'M14 24Q14 8 50 8Q86 8 86 30Q86 46 60 58L30 76L92 76L92 92L14 92L14 78L52 56Q70 46 70 30Q70 22 50 22Q30 22 30 30L30 36L14 36Z',
+  '3': 'M14 24Q14 8 50 8Q86 8 86 28Q86 42 65 48Q86 54 86 70Q86 92 50 92Q14 92 14 76L14 68L30 68L30 76Q34 78 50 78Q70 78 70 70Q70 60 50 60L40 60L40 44L50 44Q70 44 70 30Q70 22 50 22Q30 22 30 30L30 36L14 36Z',
+  '4': 'M64 8L80 8L80 60L92 60L92 74L80 74L80 92L64 92L64 74L8 74L8 60L64 14Z',
+  '5': 'M14 8L86 8L86 22L30 22L30 36L52 36Q86 36 86 64Q86 92 50 92Q14 92 14 76L14 68L30 68L30 76Q34 78 50 78Q70 78 70 64Q70 50 52 50L14 50Z',
+  '6': 'M50 8Q86 8 86 30L86 36L70 36L70 30Q70 22 50 22Q30 22 30 40L30 52Q40 36 56 36Q86 36 86 64Q86 92 50 92Q14 92 14 64L14 40Q14 8 50 8Z M50 50Q30 50 30 64Q30 78 50 78Q70 78 70 64Q70 50 50 50Z',
+  '7': 'M14 8L86 8L86 22L40 92L20 92L66 22L14 22Z',
+  '8': 'M50 8Q86 8 86 28Q86 42 68 48Q88 52 88 70Q88 92 50 92Q12 92 12 70Q12 52 32 48Q14 42 14 28Q14 8 50 8Z M50 22Q30 22 30 30Q30 40 50 40Q70 40 70 30Q70 22 50 22Z M50 52Q28 52 28 68Q28 78 50 78Q72 78 72 68Q72 52 50 52Z',
+  '9': 'M50 8Q86 8 86 36L86 64Q86 92 50 92Q14 92 14 68L14 62L30 62L30 68Q30 78 50 78Q70 78 70 60L70 48Q60 64 44 64Q14 64 14 36Q14 8 50 8Z M50 22Q30 22 30 36Q30 50 50 50Q70 50 70 36Q70 22 50 22Z',
+
+  // Punctuation
+  '-': 'M20 46L80 46L80 58L20 58Z',
+  '/': 'M75 8L92 8L25 92L8 92Z',
+  '.': 'M44 78L58 78L58 92L44 92Z',
+  ':': 'M44 26L58 26L58 40L44 40Z M44 62L58 62L58 76L44 76Z',
+  ',': 'M44 78L58 78L58 90L52 96L44 90Z',
+  '!': 'M44 8L58 8L58 64L44 64Z M44 76L58 76L58 92L44 92Z'
+};
+
+// ─────────────────────────────────────────────────────────────
+// Glyph renderer
+// Lays out glyphs left-to-right with even spacing. Returns SVG markup.
+// y is the visual top of cap height (not baseline) for predictable layout.
+// ─────────────────────────────────────────────────────────────
+function aurebeshText(text, x, y, opts = {}) {
+  const { size = 32, fill = "#fff", anchor = "middle", spacing = 0.18 } = opts;
+  const upper = String(text || "").toUpperCase();
+  const unit = size / 100;
+  const advance = 100 * unit;
+  const gap = spacing * size;
+  const spaceW = size * 0.55;
+
+  let cursor = 0;
+  const parts = [];
+  for (const ch of upper) {
+    if (ch === " ") { cursor += spaceW; continue; }
+    const path = GLYPHS[ch];
+    if (!path) { cursor += advance + gap; continue; }
+    parts.push(`<path d="${path}" transform="translate(${cursor.toFixed(2)} 0) scale(${unit.toFixed(5)})" fill="${fill}" fill-rule="evenodd"/>`);
+    cursor += advance + gap;
+  }
+  // trim trailing gap
+  if (cursor > 0 && upper.slice(-1) !== " ") cursor -= gap;
+
+  let xOff = 0;
+  if (anchor === "middle") xOff = -cursor / 2;
+  else if (anchor === "end") xOff = -cursor;
+
+  return `<g transform="translate(${(x + xOff).toFixed(2)} ${y.toFixed(2)})" fill="${fill}">${parts.join("")}</g>`;
+}
+
+// Estimate fit size given a max width — monospace layout
+function fitText(s, maxWidth, maxSize, minSize = 10) {
+  const str = String(s || "");
+  const spaces = (str.match(/ /g) || []).length;
+  const nonSpaces = str.length - spaces;
+  if (str.length === 0) return maxSize;
+  // each glyph: 1.0 + 0.18 gap = 1.18 size units. Space = 0.55.
+  // Solve: (nonSpaces * 1.18 + spaces * 0.55) * size = maxWidth  →  but advance is in "size units"
+  // Each non-space adds 1.0*size + 0.18*size = 1.18*size of width. Space adds 0.55*size.
+  const factor = nonSpaces * 1.18 + spaces * 0.55;
+  return Math.max(minSize, Math.min(maxSize, maxWidth / Math.max(factor, 0.01)));
+}
+
+// ─────────────────────────────────────────────────────────────
+// Examples
+// ─────────────────────────────────────────────────────────────
+const exampleLines = {
+  "news-ticker": ["IMPERIAL FLEET MOVEMENT DETECTED IN OUTER RIM", "HOLONET NEWS", "TX 7742-A"],
+  "cast-only":   ["RESTRICTED", "CAST MEMBERS ONLY", "DOOR 22-B"],
+  "warning":     ["DANGER", "HIGH VOLTAGE", "HAZARD CLASS 3"],
+  "directional": ["DOCKING BAY 94", "LEVEL 7 EAST", "400M"],
+  "shop":        ["CANTINA", "MOS EISLEY", "OPEN"],
+  "registry":    ["MILLENNIUM FALCON", "YT-1300F LIGHT FREIGHTER", "REG 492727ZED"],
+  "holo":        ["INCOMING TRANSMISSION", "FROM HIGH COMMAND", "PRIORITY ALPHA"],
+  "chart":       ["AUREBESH", "ALPHABET CHART", "26 LETTERS · 10 DIGITS · PUNCTUATION"]
+};
+
+const styleNames = {
+  "news-ticker": "News ticker",
+  "cast-only":   "Restricted door panel",
+  "warning":     "Hazard / warning panel",
+  "directional": "Directional sign",
+  "shop":        "Shop signage (neon)",
+  "registry":    "Ship registry plate",
+  "holo":        "Holo-display caption",
+  "chart":       "Alphabet chart"
+};
+
+// ─────────────────────────────────────────────────────────────
+// Decorative helpers
+// ─────────────────────────────────────────────────────────────
+function rivet(cx, cy, r = 12, dark = "#1a1d24", mid = "#3a4150", hi = "#8a93a6") {
+  return `
+    <circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="${dark}" opacity="0.6"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${mid}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r - 4}" fill="${dark}"/>
+    <line x1="${cx - r + 2}" y1="${cy}" x2="${cx + r - 2}" y2="${cy}" stroke="${hi}" stroke-width="2" opacity="0.6"/>
+  `;
+}
+
+function hexBolt(cx, cy, r = 14, fill = "#2a2f3a", stroke = "#0a0c10") {
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`);
+  }
+  return `<polygon points="${pts.join(" ")}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+          <circle cx="${cx}" cy="${cy}" r="${r * 0.45}" fill="${stroke}" opacity="0.6"/>`;
+}
+
+function cornerBracket(x, y, size, dir, color, w = 3) {
+  const s = size;
+  const map = {
+    tl: `M ${x} ${y + s} L ${x} ${y} L ${x + s} ${y}`,
+    tr: `M ${x - s} ${y} L ${x} ${y} L ${x} ${y + s}`,
+    bl: `M ${x} ${y - s} L ${x} ${y} L ${x + s} ${y}`,
+    br: `M ${x - s} ${y} L ${x} ${y} L ${x} ${y - s}`
+  };
+  return `<path d="${map[dir]}" stroke="${color}" stroke-width="${w}" fill="none" stroke-linecap="square"/>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Templates
+// ─────────────────────────────────────────────────────────────
+const templates = {
+  "news-ticker": ([l1, l2, l3]) => {
+    const W = 1600, H = 200;
+    const brandW = 320;
+    const rightW = 260;
+    const mainMax = W - brandW - rightW - 80;
+    const mainSize = fitText(l1, mainMax, 56);
+    const brandMain = fitText("HNN", 180, 64);
+    const brandSub = fitText(l2, brandW - 80, 22);
+    const codeSize = fitText(l3, rightW - 40, 30);
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="nt-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#061018"/>
+          <stop offset="100%" stop-color="#0a1828"/>
+        </linearGradient>
+        <pattern id="nt-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.9" fill="#4cc4ff" opacity="0.18"/>
+        </pattern>
+        <linearGradient id="nt-brand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7fe1ff"/>
+          <stop offset="100%" stop-color="#3aa8e0"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#nt-bg)"/>
+      <rect width="${W}" height="${H}" fill="url(#nt-grid)"/>
+      <rect width="${W}" height="6" fill="#4cc4ff"/>
+      <rect y="${H - 3}" width="${W}" height="3" fill="#4cc4ff" opacity="0.5"/>
+
+      <polygon points="0,6 ${brandW - 50},6 ${brandW},${H/2} ${brandW - 50},${H - 4} 0,${H - 4}" fill="url(#nt-brand)"/>
+      <polygon points="${brandW - 50},6 ${brandW},${H/2} ${brandW - 50},${H - 4}" fill="#7fe1ff" opacity="0.5"/>
+
+      ${aurebeshText("HNN", brandW/2 - 28, H/2 - brandMain - 6, { size: brandMain, fill: "#051019", spacing: 0.25 })}
+      ${aurebeshText(l2, brandW/2 - 28, H/2 + 10, { size: brandSub, fill: "#051019", spacing: 0.25 })}
+
+      <line x1="${brandW + 24}" y1="28" x2="${brandW + 24}" y2="${H - 28}" stroke="#4cc4ff" stroke-width="1.5" opacity="0.4"/>
+
+      ${aurebeshText(l1, brandW + 44, H/2 - mainSize/2, { size: mainSize, fill: "#e8f4ff", anchor: "start", spacing: 0.22 })}
+
+      <line x1="${W - rightW + 20}" y1="28" x2="${W - rightW + 20}" y2="${H - 28}" stroke="#4cc4ff" stroke-width="1.5" opacity="0.4"/>
+      ${aurebeshText("TX", W - rightW + 40, H/2 - 28, { size: 18, fill: "#4cc4ff", anchor: "start", spacing: 0.3 })}
+      ${aurebeshText(l3, W - rightW + 40, H/2 - codeSize/2 + 12, { size: codeSize, fill: "#e8f4ff", anchor: "start", spacing: 0.18 })}
+
+      <circle cx="${W - 30}" cy="32" r="6" fill="#ff4040"/>
+      <circle cx="${W - 30}" cy="32" r="11" fill="#ff4040" opacity="0.25"/>
+      ${aurebeshText("LIVE", W - 46, 24, { size: 14, fill: "#ff4040", anchor: "end", spacing: 0.3 })}
+    `};
+  },
+
+  "cast-only": ([l1, l2, l3]) => {
+    const W = 900, H = 1100;
+    const cut = 50;
+    const bodyPts = `${cut},0 ${W-cut},0 ${W},${cut} ${W},${H-cut} ${W-cut},${H} ${cut},${H} 0,${H-cut} 0,${cut}`;
+    const innerPts = `${cut+24},24 ${W-cut-24},24 ${W-24},${cut+24} ${W-24},${H-cut-24} ${W-cut-24},${H-24} ${cut+24},${H-24} 24,${H-cut-24} 24,${cut+24}`;
+    const headerSize = fitText(l1, W - 220, 62);
+    const titleSize = fitText(l2, W - 180, 120);
+    const codeSize = fitText(l3, W - 260, 36);
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="co-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2a2f3a"/>
+          <stop offset="50%" stop-color="#1d2230"/>
+          <stop offset="100%" stop-color="#13161e"/>
+        </linearGradient>
+        <linearGradient id="co-band" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#d22832"/>
+          <stop offset="100%" stop-color="#8e1018"/>
+        </linearGradient>
+        <pattern id="co-scratch" width="200" height="6" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="3" x2="200" y2="3" stroke="#fff" stroke-width="0.5" opacity="0.04"/>
+        </pattern>
+      </defs>
+      <polygon points="${bodyPts}" fill="url(#co-bg)"/>
+      <polygon points="${bodyPts}" fill="url(#co-scratch)"/>
+      <polygon points="${innerPts}" fill="none" stroke="#4a505e" stroke-width="2"/>
+
+      <rect x="80" y="120" width="${W-160}" height="100" fill="url(#co-band)"/>
+      <rect x="80" y="120" width="${W-160}" height="6" fill="#ff8a92"/>
+      <rect x="80" y="214" width="${W-160}" height="6" fill="#4a0810"/>
+      <polygon points="80,120 110,120 95,135" fill="#fff" opacity="0.2"/>
+      <polygon points="${W-80},120 ${W-110},120 ${W-95},135" fill="#fff" opacity="0.2"/>
+      ${aurebeshText(l1, W/2, 152, { size: headerSize, fill: "#fff", spacing: 0.3 })}
+
+      ${aurebeshText(l2, W/2, H/2 - titleSize/2, { size: titleSize, fill: "#fff", spacing: 0.22 })}
+
+      <line x1="220" y1="${H - 220}" x2="${W - 220}" y2="${H - 220}" stroke="#4a505e" stroke-width="2"/>
+      ${aurebeshText(l3, W/2, H - 160, { size: codeSize, fill: "#8a93a6", spacing: 0.25 })}
+
+      ${rivet(70, 70)}
+      ${rivet(W - 70, 70)}
+      ${rivet(70, H - 70)}
+      ${rivet(W - 70, H - 70)}
+    `};
+  },
+
+  "warning": ([l1, l2, l3]) => {
+    const W = 1000, H = 1000;
+    const cut = 70;
+    const body = `${cut},20 ${W-cut},20 ${W-20},${cut} ${W-20},${H-cut} ${W-cut},${H-20} ${cut},${H-20} 20,${H-cut} 20,${cut}`;
+    const headerSize = fitText(l1, W - 200, 130);
+    const subSize = fitText(l2, W - 180, 90);
+    const codeSize = fitText(l3, W - 320, 32);
+    return { width: W, height: H, svg: `
+      <defs>
+        <pattern id="wn-stripes" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="60" height="60" fill="#f5c518"/>
+          <rect width="30" height="60" fill="#0a0c10"/>
+        </pattern>
+        <linearGradient id="wn-body" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fbd445"/>
+          <stop offset="100%" stop-color="#e0a800"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#wn-stripes)"/>
+      <polygon points="${body}" fill="url(#wn-body)" stroke="#0a0c10" stroke-width="3"/>
+
+      <g transform="translate(${W/2}, 200)">
+        <polygon points="0,-110 100,80 -100,80" fill="none" stroke="#0a0c10" stroke-width="12" stroke-linejoin="round"/>
+        <polygon points="0,-90 85,70 -85,70" fill="#f5c518"/>
+        <rect x="-10" y="-50" width="20" height="80" fill="#0a0c10" rx="3"/>
+        <circle cx="0" cy="50" r="10" fill="#0a0c10"/>
+      </g>
+
+      ${aurebeshText(l1, W/2, 400, { size: headerSize, fill: "#c4202a", spacing: 0.28 })}
+      ${aurebeshText(l2, W/2, 400 + headerSize + 40, { size: subSize, fill: "#0a0c10", spacing: 0.24 })}
+
+      <line x1="200" y1="${H - 200}" x2="${W - 200}" y2="${H - 200}" stroke="#0a0c10" stroke-width="2" opacity="0.4"/>
+      ${aurebeshText(l3, W/2, H - 160, { size: codeSize, fill: "#0a0c10", spacing: 0.25 })}
+
+      ${hexBolt(80, 80, 16)}
+      ${hexBolt(W - 80, 80, 16)}
+      ${hexBolt(80, H - 80, 16)}
+      ${hexBolt(W - 80, H - 80, 16)}
+    `};
+  },
+
+  "directional": ([l1, l2, l3]) => {
+    const W = 1600, H = 380;
+    const arrowTip = W - 30;
+    const arrowBase = W - 320;
+    const textMaxW = arrowBase - 100;
+    const titleSize = fitText(l1, textMaxW, 110);
+    const subSize = fitText(l2, textMaxW, 44);
+    const codeSize = fitText(l3, 240, 56);
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="dr-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2a3140"/>
+          <stop offset="50%" stop-color="#1a2030"/>
+          <stop offset="100%" stop-color="#0e1320"/>
+        </linearGradient>
+        <linearGradient id="dr-arrow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3aa8e0"/>
+          <stop offset="100%" stop-color="#7fe1ff"/>
+        </linearGradient>
+        <pattern id="dr-scratch" width="400" height="3" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="1.5" x2="400" y2="1.5" stroke="#fff" stroke-width="0.4" opacity="0.05"/>
+        </pattern>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#dr-bg)"/>
+      <rect width="${W}" height="${H}" fill="url(#dr-scratch)"/>
+
+      <rect x="0" y="0" width="12" height="${H}" fill="#4cc4ff"/>
+      <rect x="14" y="0" width="3" height="${H}" fill="#4cc4ff" opacity="0.4"/>
+
+      <polygon points="${arrowTip},${H/2} ${arrowBase + 80},40 ${arrowBase},40 ${arrowBase - 80},${H/2} ${arrowBase},${H - 40} ${arrowBase + 80},${H - 40}" fill="url(#dr-arrow)"/>
+      <polygon points="${arrowTip},${H/2} ${arrowBase + 80},40 ${arrowBase},40 ${arrowBase - 80},${H/2}" fill="#fff" opacity="0.15"/>
+
+      ${aurebeshText(l2, 50, 70, { size: subSize, fill: "#4cc4ff", anchor: "start", spacing: 0.3 })}
+      ${aurebeshText(l1, 50, 70 + subSize + 20, { size: titleSize, fill: "#e8f4ff", anchor: "start", spacing: 0.22 })}
+
+      <rect x="${arrowBase + 110}" y="${H/2 - 36}" width="180" height="72" rx="6" fill="#0a0c10" opacity="0.65"/>
+      ${aurebeshText(l3, arrowBase + 200, H/2 - codeSize/2, { size: codeSize, fill: "#7fe1ff", spacing: 0.22 })}
+
+      ${hexBolt(40, 30, 9, "#1a2030", "#0a0c10")}
+      ${hexBolt(40, H - 30, 9, "#1a2030", "#0a0c10")}
+    `};
+  },
+
+  "shop": ([l1, l2, l3]) => {
+    const W = 1300, H = 540;
+    const titleSize = fitText(l1, W - 220, 200);
+    const subSize = fitText(l2, W - 260, 56);
+    const codeSize = fitText(l3, 240, 38);
+    return { width: W, height: H, svg: `
+      <defs>
+        <radialGradient id="sh-bg" cx="50%" cy="50%" r="75%">
+          <stop offset="0%" stop-color="#2a0f30"/>
+          <stop offset="100%" stop-color="#040208"/>
+        </radialGradient>
+        <filter id="sh-glow-pink" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="8" result="b1"/>
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b2"/>
+          <feMerge>
+            <feMergeNode in="b1"/>
+            <feMergeNode in="b1"/>
+            <feMergeNode in="b2"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="sh-glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#sh-bg)"/>
+
+      <g filter="url(#sh-glow-pink)">
+        <rect x="30" y="30" width="${W-60}" height="${H-60}" fill="none" stroke="#ff3da6" stroke-width="3"/>
+      </g>
+      <g filter="url(#sh-glow-cyan)">
+        <rect x="50" y="50" width="${W-100}" height="${H-100}" fill="none" stroke="#4cc4ff" stroke-width="1.5" opacity="0.7"/>
+      </g>
+
+      ${[80, 120, 160].map(d => `
+        <g filter="url(#sh-glow-cyan)">
+          <circle cx="${d}" cy="${H/2}" r="4" fill="#4cc4ff"/>
+          <circle cx="${W - d}" cy="${H/2}" r="4" fill="#4cc4ff"/>
+        </g>`).join("")}
+
+      <g filter="url(#sh-glow-pink)">
+        ${aurebeshText(l1, W/2, H/2 - titleSize/2 - 30, { size: titleSize, fill: "#ff7ec3", spacing: 0.32 })}
+      </g>
+      <g filter="url(#sh-glow-cyan)">
+        ${aurebeshText(l2, W/2, H/2 + titleSize/2 + 0, { size: subSize, fill: "#7fe1ff", spacing: 0.28 })}
+      </g>
+      <g filter="url(#sh-glow-cyan)">
+        <rect x="${W/2 - 130}" y="${H - 96}" width="260" height="52" rx="26" fill="none" stroke="#7fff9a" stroke-width="2"/>
+        ${aurebeshText(l3, W/2, H - 78, { size: codeSize, fill: "#7fff9a", spacing: 0.3 })}
+      </g>
+    `};
+  },
+
+  "registry": ([l1, l2, l3]) => {
+    const W = 1500, H = 380;
+    const titleSize = fitText(l1, W - 280, 120);
+    const subSize = fitText(l2, W - 280, 36);
+    const codeSize = fitText(l3, W - 280, 36);
+    const bolts = [
+      [50, 50], [W/2, 50], [W - 50, 50],
+      [50, H - 50], [W/2, H - 50], [W - 50, H - 50]
+    ];
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="rg-plate" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#c4ccdc"/>
+          <stop offset="25%" stop-color="#8a92a4"/>
+          <stop offset="55%" stop-color="#5a6276"/>
+          <stop offset="100%" stop-color="#3a4150"/>
+        </linearGradient>
+        <pattern id="rg-brush" width="400" height="2" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="1" x2="400" y2="1" stroke="#fff" stroke-width="0.5" opacity="0.1"/>
+          <line x1="0" y1="0" x2="400" y2="0" stroke="#000" stroke-width="0.5" opacity="0.08"/>
+        </pattern>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#rg-plate)"/>
+      <rect width="${W}" height="${H}" fill="url(#rg-brush)"/>
+      <rect x="20" y="20" width="${W-40}" height="${H-40}" fill="none" stroke="#1a1d24" stroke-width="2" opacity="0.6"/>
+      <rect x="28" y="28" width="${W-56}" height="${H-56}" fill="none" stroke="#fff" stroke-width="1" opacity="0.2"/>
+
+      <rect x="${W/2 - 360}" y="80" width="720" height="2" fill="#1a1d24" opacity="0.4"/>
+      <rect x="${W/2 - 360}" y="${H - 80}" width="720" height="2" fill="#1a1d24" opacity="0.4"/>
+
+      ${aurebeshText(l2, W/2, 96, { size: subSize, fill: "#1a1d24", spacing: 0.32 })}
+
+      <g>
+        ${aurebeshText(l1, W/2 + 2, H/2 - titleSize/2 + 2, { size: titleSize, fill: "#fff", spacing: 0.28, opacity: 0.15 }).replace('<g ', '<g opacity="0.15" ')}
+        ${aurebeshText(l1, W/2, H/2 - titleSize/2, { size: titleSize, fill: "#15181f", spacing: 0.28 })}
+      </g>
+
+      ${aurebeshText(l3, W/2, H - 60, { size: codeSize, fill: "#1a1d24", spacing: 0.32 })}
+
+      ${bolts.map(([x, y]) => hexBolt(x, y, 14)).join("")}
+    `};
+  },
+
+  "holo": ([l1, l2, l3]) => {
+    const W = 1500, H = 340;
+    const titleSize = fitText(l1, W - 220, 110);
+    const subSize = fitText(l2, W - 260, 34);
+    const codeSize = fitText(l3, W - 260, 32);
+    let scan = "";
+    for (let y = 0; y < H; y += 3) {
+      scan += `<rect x="0" y="${y}" width="${W}" height="1" fill="#7fe1ff" opacity="0.08"/>`;
+    }
+    const glitch = [];
+    for (let i = 0; i < 4; i++) {
+      const gy = 30 + Math.floor(Math.random() * (H - 60));
+      const gh = 2 + Math.floor(Math.random() * 4);
+      const gw = 40 + Math.floor(Math.random() * 200);
+      const gx = Math.floor(Math.random() * (W - gw));
+      glitch.push(`<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" fill="#7fe1ff" opacity="0.18"/>`);
+    }
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="ho-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#031020" stop-opacity="0.95"/>
+          <stop offset="50%" stop-color="#062c44" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#031020" stop-opacity="0.95"/>
+        </linearGradient>
+        <filter id="ho-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="b1"/>
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="b2"/>
+          <feMerge>
+            <feMergeNode in="b1"/>
+            <feMergeNode in="b2"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <radialGradient id="ho-vignette" cx="50%" cy="50%" r="70%">
+          <stop offset="60%" stop-color="#000" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+        </radialGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#ho-bg)"/>
+      ${scan}
+      ${glitch.join("")}
+      <rect width="${W}" height="${H}" fill="url(#ho-vignette)"/>
+
+      ${cornerBracket(20, 20, 32, "tl", "#7fe1ff", 3)}
+      ${cornerBracket(W - 20, 20, 32, "tr", "#7fe1ff", 3)}
+      ${cornerBracket(20, H - 20, 32, "bl", "#7fe1ff", 3)}
+      ${cornerBracket(W - 20, H - 20, 32, "br", "#7fe1ff", 3)}
+
+      <g filter="url(#ho-glow)">
+        <rect x="50" y="56" width="6" height="${subSize + 8}" fill="#7fe1ff"/>
+        ${aurebeshText(l2, 70, 56, { size: subSize, fill: "#7fe1ff", anchor: "start", spacing: 0.28 })}
+      </g>
+
+      <g filter="url(#ho-glow)">
+        ${aurebeshText(l1, W/2, H/2 - titleSize/2, { size: titleSize, fill: "#bff0ff", spacing: 0.24 })}
+      </g>
+
+      <g filter="url(#ho-glow)">
+        <rect x="${W - 56}" y="${H - 56 - codeSize}" width="6" height="${codeSize + 8}" fill="#7fe1ff"/>
+        ${aurebeshText(l3, W - 70, H - 56 - codeSize, { size: codeSize, fill: "#7fe1ff", anchor: "end", spacing: 0.28 })}
+      </g>
+    `};
+  },
+
+  "chart": ([l1, l2, l3]) => {
+    // Grid of every unique glyph in the font, labeled with its Latin equivalent.
+    const cols = 7;
+    const cellW = 170;
+    const cellH = 200;
+    const pad = 50;
+    const headerH = 180;
+
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const digits  = "0123456789".split("");
+    const punct   = ["-", "/", ".", ",", ":", "!"];
+    const all = [...letters, ...digits, ...punct];
+
+    const rows = Math.ceil(all.length / cols);
+    const W = pad * 2 + cols * cellW;
+    const H = pad * 2 + headerH + rows * cellH + 40;
+
+    let cells = "";
+    all.forEach((ch, i) => {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const x = pad + c * cellW;
+      const y = pad + headerH + r * cellH;
+      const glyphPath = GLYPHS[ch];
+      const glyphSize = 110;
+      const glyphX = x + (cellW - glyphSize) / 2;
+      const glyphY = y + 20;
+      cells += `
+        <rect x="${x + 8}" y="${y + 8}" width="${cellW - 16}" height="${cellH - 16}" fill="#0a0c10" stroke="#2a2f3d" stroke-width="1.5" rx="8"/>
+        <g transform="translate(${glyphX} ${glyphY}) scale(${glyphSize / 100})"><path d="${glyphPath}" fill="#7fe1ff" fill-rule="evenodd"/></g>
+        <text x="${x + cellW / 2}" y="${y + cellH - 22}" text-anchor="middle" fill="#8a93a6" font-family="ui-monospace, Menlo, monospace" font-size="22" letter-spacing="3">${ch}</text>
+      `;
+    });
+
+    return { width: W, height: H, svg: `
+      <defs>
+        <linearGradient id="ch-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#15181f"/>
+          <stop offset="100%" stop-color="#0c0e12"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#ch-bg)"/>
+      <rect x="24" y="24" width="${W - 48}" height="${H - 48}" fill="none" stroke="#2a2f3d" stroke-width="2" rx="12"/>
+      <line x1="${pad}" y1="${pad + headerH - 20}" x2="${W - pad}" y2="${pad + headerH - 20}" stroke="#4cc4ff" stroke-width="1.5" opacity="0.4"/>
+
+      ${aurebeshText(l1, W / 2, pad + 10, { size: 80, fill: "#e8f4ff", spacing: 0.3 })}
+      <text x="${W / 2}" y="${pad + 130}" text-anchor="middle" fill="#4cc4ff" font-family="ui-monospace, Menlo, monospace" font-size="22" letter-spacing="8">${l2}</text>
+      <text x="${W / 2}" y="${H - pad - 4}" text-anchor="middle" fill="#5a6276" font-family="ui-monospace, Menlo, monospace" font-size="14" letter-spacing="4">${l3}</text>
+
+      ${cells}
+    `};
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────────────────────
+function getLines() {
+  const style = $("style").value;
+  const ex = exampleLines[style];
+  return [
+    $("line1").value.trim() || ex[0],
+    $("line2").value.trim() || ex[1],
+    $("line3").value.trim() || ex[2]
+  ];
+}
+
+function buildSvg(styleKey, lines) {
+  const tpl = templates[styleKey](lines);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tpl.width} ${tpl.height}" width="${tpl.width}" height="${tpl.height}">${tpl.svg}</svg>`;
+}
+
+function render() {
+  const style = $("style").value;
+  $("styleName").textContent = styleNames[style];
+  $("preview").innerHTML = buildSvg(style, getLines());
+}
+
+function loadExample() {
+  const ex = exampleLines[$("style").value];
+  $("line1").value = ex[0];
+  $("line2").value = ex[1];
+  $("line3").value = ex[2];
+  render();
+}
+
+function buildCharsheet() {
+  const cells = Object.keys(GLYPHS).map(ch => {
+    return `<div class="glyphcell" title="${ch}">
+      <svg viewBox="0 0 100 100">
+        <path d="${GLYPHS[ch]}" fill="#7fe1ff" fill-rule="evenodd"/>
+      </svg>
+    </div>`;
+  }).join("");
+  $("charsheet").innerHTML = cells;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Export
+// ─────────────────────────────────────────────────────────────
+function downloadBlob(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function currentSvgString() {
+  return buildSvg($("style").value, getLines());
+}
+
+async function svgToPngBlob(svgString, scale = 2) {
+  const m = svgString.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+  const w = m ? parseFloat(m[1]) : 1200;
+  const h = m ? parseFloat(m[2]) : 400;
+  const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const canvas = document.createElement("canvas");
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise(res => canvas.toBlob(res, "image/png"));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+$("downloadSvg").addEventListener("click", () => {
+  const s = currentSvgString();
+  downloadBlob(new Blob([s], { type: "image/svg+xml" }), `aurebesh-${$("style").value}.svg`);
+  status("SVG downloaded.");
+});
+
+$("downloadPng").addEventListener("click", async () => {
+  try {
+    status("Rendering PNG…");
+    const blob = await svgToPngBlob(currentSvgString(), 2);
+    downloadBlob(blob, `aurebesh-${$("style").value}.png`);
+    status("PNG downloaded.");
+  } catch (e) {
+    status("PNG export failed: " + e.message, false);
+  }
+});
+
+$("copyPng").addEventListener("click", async () => {
+  try {
+    status("Copying PNG…");
+    const blob = await svgToPngBlob(currentSvgString(), 2);
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    status("PNG copied to clipboard.");
+  } catch (e) {
+    status("Copy failed: " + e.message, false);
+  }
+});
+
+$("style").addEventListener("change", () => { loadExample(); });
+["line1", "line2", "line3"].forEach(id => $(id).addEventListener("input", render));
+$("renderBtn").addEventListener("click", render);
+$("exampleBtn").addEventListener("click", loadExample);
+
+buildCharsheet();
+$("style").value = "chart";  // open on the alphabet chart so all glyphs are visible
+loadExample();
+</script>
+</body>
+</html>
