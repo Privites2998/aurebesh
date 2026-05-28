@@ -203,6 +203,14 @@ const GLYPHS = {
   '8': 'M50 8Q86 8 86 28Q86 42 68 48Q88 52 88 70Q88 92 50 92Q12 92 12 70Q12 52 32 48Q14 42 14 28Q14 8 50 8Z M50 22Q30 22 30 30Q30 40 50 40Q70 40 70 30Q70 22 50 22Z M50 52Q28 52 28 68Q28 78 50 78Q72 78 72 68Q72 52 50 52Z',
   '9': 'M50 8Q86 8 86 36L86 64Q86 92 50 92Q14 92 14 68L14 62L30 62L30 68Q30 78 50 78Q70 78 70 60L70 48Q60 64 44 64Q14 64 14 36Q14 8 50 8Z M50 22Q30 22 30 36Q30 50 50 50Q70 50 70 36Q70 22 50 22Z',
 
+  // Digraphs (must be checked before single-letter fallback in aurebeshText)
+  // Cherek — two columns joined at top and bottom
+  CH: 'M10 15L45 15L45 30L25 30L25 70L45 70L45 85L10 85Z M55 15L90 15L90 85L55 85L55 70L75 70L75 30L55 30Z',
+  // Aeresk — upward triangle with two horizontal bars
+  AE: 'M5 85L50 15L95 85L80 85L50 42L20 85Z M22 65L78 65L78 76L22 76Z M30 52L70 52L70 62L30 62Z',
+  // Eek — hexagon ring with center fill square
+  EO: 'M15 15L85 15L95 50L85 85L15 85L5 50Z M28 30L72 30L82 50L72 70L28 70L18 50Z M42 42L58 42L58 58L42 58Z',
+
   // Punctuation
   '-': 'M20 46L80 46L80 58L20 58Z',
   '/': 'M75 8L92 8L25 92L8 92Z',
@@ -227,7 +235,11 @@ function aurebeshText(text, x, y, opts = {}) {
 
   let cursor = 0;
   const parts = [];
-  for (const ch of upper) {
+  let i = 0;
+  while (i < upper.length) {
+    const two = upper.slice(i, i + 2);
+    const ch = GLYPHS[two] ? two : upper[i];
+    i += ch.length;
     if (ch === " ") { cursor += spaceW; continue; }
     const path = GLYPHS[ch];
     if (!path) { cursor += advance + gap; continue; }
